@@ -6,6 +6,7 @@ import warnings
 from sklearn.model_selection import cross_val_score
 from edf import getAllEpochFormatedData, getSingleEpochFormatedData
 from params import MODEL_DIR, RUNS_LEFT_RIGHT, MODEL_DIR, N_COMPONENTS
+from MyCSP import MyCSP
 from utils import loadModel
 import joblib
 from sklearn.pipeline import Pipeline
@@ -22,7 +23,7 @@ def cli_train(subj, run, verbose = True):
     try:
         X, y = getAllEpochFormatedData(subj, run)
         pipe = Pipeline([
-            ('csp', CSP(n_components=N_COMPONENTS, reg='ledoit_wolf', log=False, norm_trace=False)),
+            ('csp', MyCSP(n_components=N_COMPONENTS)),
             ('scaler', StandardScaler()),
             ('lda', LDA())
         ])
@@ -52,11 +53,11 @@ def cli_predict(subj, run, verbose = True):
         print(e)
         return None
 
-def cli_all():
+def cli_all(runs = RUNS_LEFT_RIGHT):
     accuracyGlobal = []
-    for run in RUNS_LEFT_RIGHT:
+    for run in runs:
         accuracyPerSubject = []
-        for subj in range(1, 109):
+        for subj in range(1, 10):
             cli_train(subj, run, False)
             acc = cli_predict(subj, run, False)
             if acc is not None:
@@ -66,9 +67,9 @@ def cli_all():
                 print(f"experiment {run}: subject {subj}: skipped (no data)")
         accuracyGlobal.append(sum(accuracyPerSubject) / len(accuracyPerSubject))
     print("Mean accuracy of the six different experiments for all 109 subjects")
-    for run, acc in zip(RUNS_LEFT_RIGHT, accuracyGlobal):
+    for run, acc in zip(runs, accuracyGlobal):
         print(f"experiment {run}: accuracy = {acc}")
-    print(f"Mean accuracy of {len(RUNS_LEFT_RIGHT)} experiments: {sum(accuracyGlobal) / len(accuracyGlobal)}")
+    print(f"Mean accuracy of {len(runs)} experiments: {sum(accuracyGlobal) / len(accuracyGlobal)}")
 
 def usage():
     try:
