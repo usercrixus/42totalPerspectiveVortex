@@ -1,51 +1,76 @@
+# srcs/vizualisation/main.py
+
 import mne
 import matplotlib.pyplot as plt
 
-def visualize_raw(file_path):
+# Use relative imports inside the package
+from ..trainAndPredict.edf import getGlobalFilter, applyGlobalFilter
+from ..trainAndPredict.utils import getRawEDF  # picks motor channels via MOTOR_LABELS
+
+
+def _mean_psd(psd):
     """
-    Load and plot raw EEG data from an EDF file.
+    Return a 1D mean PSD over channels (and epochs if present).
+    Handles shapes from Raw (C,F) and Epochs (E,C,F).
     """
-    print(f"Loading raw EEG from {file_path}...")
-    raw = mne.io.read_raw_edf(file_path, preload=True)
+    data = psd.get_data()
+    if data.ndim == 3:      # (epochs, channels, freqs)
+        return data.mean(axis=(0, 1))
+    if data.ndim == 2:      # (channels, freqs)
+        return data.mean(axis=0)
+    raise ValueError(f"Unexpected PSD shape: {data.shape}")
+
+
+def compare_psd(raw, raw_filt, fmax=50):
+    """
+    Overlay average PSD of raw vs filtered on one plot.
+    """
+    psd_raw = raw.compute_psd(fmax=fmax, verbose=False)
+    psd_fil = raw_filt.compute_psd(fmax=fmax, verbose=False)
+
+    freqs = psd_raw.freqs
+    p_raw = _mean_psd(psd_raw)
+    p_fil = _mean_psd(psd_fil)
+
+    fig, ax = plt.subplots()
+    ax.plot(freqs, p_raw, label="raw")
+    ax.plot(freqs, p_fil, label="filtered")
+    ax.set_xlabel("Frequency (Hz)")
+    ax.set_ylabel("Power")
+    ax.set_title("PSD before vs after filtering")
+    ax.legend()
+    plt.show(block=True)
+
+
+def visualize_filtered(file_path: str):
+    """
+    Load EDF, build T0-based equalizer, apply zero-phase FIR, and visualize.
+    """
+    print(f"Loading and filtering {file_path}...")
+
+    # Use project loader to get the same motor channels as during training
+    raw = getRawEDF(file_path)
+
+    # Build equalizer from this file's T0 and apply (zero-phase FIR via filtfilt)
+    h = getGlobalFilter(raw)
+    raw_filt = applyGlobalFilter(raw, h)
+
+    # Clear accidental bad-channel markings for fair comparison
+    raw.info["bads"] = []
+    raw_filt.info["bads"] = []
+
+    # Plot filtered first (one window at a time to avoid confusion)
+    raw_filt.plot(n_channels=10, duration=10.0, title="Filtered EEG (T0-equalized)")
+    plt.show(block=True)
+
+    # Then plot raw
     raw.plot(n_channels=10, duration=10.0, title="Raw EEG (unfiltered)")
     plt.show(block=True)
 
-
-def visualize_filtered(file_path, l_freq, h_freq, picks=None):
-    print(f"Loading and filtering {file_path}...")
-    raw = mne.io.read_raw_edf(file_path, preload=True)
-    raw_filtered = raw.copy().filter(l_freq=l_freq, h_freq=h_freq)
-
-    if picks:
-        # Clean up channel names in the file to match standard names
-        available = {ch.replace(".", "").replace(" ", ""): ch for ch in raw_filtered.ch_names}
-        selected = [available[ch] for ch in picks if ch in available]
-
-        print(f"Requested: {picks}")
-        print(f"Available (normalized): {list(available.keys())}")
-        print(f"Selected (actual names in file): {selected}")
-
-        if not selected:
-            print(f"⚠️ No requested channels found in this file.")
-        else:
-            raw_filtered.pick_channels(selected)
-            raw_filtered.reorder_channels(selected)
-
-    raw_filtered.plot(n_channels=10, duration=10.0, title="Filtered EEG (bandpass)")
-    raw_filtered.compute_psd(fmax=50).plot(average=True)
-    plt.show(block=True)
+    # PSD comparison overlay
+    compare_psd(raw, raw_filt, fmax=50)
 
 
 if __name__ == "__main__":
     file = "DATA/files/S001/S001R05.edf"
-    '''
-    What we can see is that some electrodes seem more relevant
-    Fc4 Fc2 seem a good representation of the top
-    Af7 Fp2 seem to have nice peaks
-    T8 T10 Tp8 seem very high frequency
-    '''
-    visualize_raw(file)
-    selected_channel = ['Fc4', 'Fc2', 'Af7', 'Fp2', 'T8', 'T10', 'Tp8']
-    l_freq = 8.
-    h_freq = 35.
-    visualize_filtered(file, l_freq, h_freq, selected_channel)
+    visualize_filtered(file)

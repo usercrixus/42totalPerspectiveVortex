@@ -4,13 +4,12 @@ import numpy as np
 import mne
 import warnings
 from sklearn.model_selection import cross_val_score
-from edf import getAllEpochFormatedData, getSingleEpochFormatedData
-from params import MODEL_DIR, RUNS_LEFT_RIGHT, MODEL_DIR, N_COMPONENTS
-from MyCSP import MyCSP
-from utils import loadModel
+from .edf import getAllEpochFormatedData, getSingleEpochFormatedData
+from .params import MODEL_DIR, RUNS_LEFT_RIGHT, MODEL_DIR, N_COMPONENTS
+from .MyCSP import MyCSP
+from .utils import loadModel
 import joblib
 from sklearn.pipeline import Pipeline
-from mne.decoding import CSP
 from sklearn.preprocessing import StandardScaler
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 
