@@ -59,12 +59,12 @@ def visualize_filtered(file_path: str):
     raw.info["bads"] = []
     raw_filt.info["bads"] = []
 
-    # Plot filtered first (one window at a time to avoid confusion)
-    raw_filt.plot(n_channels=10, duration=10.0, title="Filtered EEG (T0-equalized)")
-    plt.show(block=True)
-
     # Then plot raw
     raw.plot(n_channels=10, duration=10.0, title="Raw EEG (unfiltered)")
+    plt.show(block=True)
+
+    # Plot filtered first (one window at a time to avoid confusion)
+    raw_filt.plot(n_channels=10, duration=10.0, title="Filtered EEG (T0-equalized)")
     plt.show(block=True)
 
     # PSD comparison overlay

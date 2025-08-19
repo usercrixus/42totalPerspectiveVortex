@@ -2,7 +2,7 @@ import os
 import joblib
 import mne
 from mne.io.base import BaseRaw
-from .params import H_FREQ, L_FREQ, MODEL_DIR, MOTOR_LABELS
+from .params import MODEL_DIR
 
 def getEdfFilePath(subj, run):
     path = f"physionet.org/files/eegmmidb/1.0.0/S{subj:03d}/S{subj:03d}R{run:02d}.edf"
