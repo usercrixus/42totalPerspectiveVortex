@@ -32,8 +32,7 @@ This will fetch files into `physionet.org/files/eegmmidb/1.0.0/`.
 
 ## Usage
 
-The project is controlled via the **Makefile**.  
-But first : python3 -m venv venv && source venv/bin/activate && pip install -r requirement
+The project is controlled via the **Makefile**.
 
 ### Train a model
 
