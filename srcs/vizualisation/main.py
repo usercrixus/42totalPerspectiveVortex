@@ -72,5 +72,5 @@ def visualize_filtered(file_path: str):
 
 
 if __name__ == "__main__":
-    file = "DATA/files/S001/S001R05.edf"
+    file = "physionet.org/files/eegmmidb/1.0.0/S001/S001R05.edf"
     visualize_filtered(file)

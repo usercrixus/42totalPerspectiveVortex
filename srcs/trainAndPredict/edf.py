@@ -36,20 +36,20 @@ def getEpoch(raw: BaseRaw, tmin, tmax, label):
 
 def getGlobalFilter(raw: BaseRaw, n_taps: int = 513):
     epochs: Epochs = getEpoch(raw, TMIN, TMAX, "T0")
-    nyq = BASE_SAMPLES_PER_SECONDE / 2.0
-    psd = epochs.compute_psd(method="welch", fmin=0.0, fmax=nyq)
+    sfreq = float(raw.info["sfreq"])
+    if sfreq != 160.0:
+        raise Exception(f"sfreq should be {BASE_SAMPLES_PER_SECONDE}")
+    nyq = float(raw.info["sfreq"]) / 2.0
+    psd = epochs.compute_psd(method="welch", fmin=L_FREQ, fmax=H_FREQ)
     freqs = psd.freqs
     averageFrequencies = psd.get_data().mean(axis=(0, 1))
     rawFilter = 1.0 / np.sqrt(averageFrequencies + 1e-12)
     rawFilter /= rawFilter.max()
-    rawFilter[(freqs < L_FREQ) | (freqs > H_FREQ)] = 0.0
     normalizedFrequencies = freqs / nyq
-    if normalizedFrequencies[0] > 0:
-        normalizedFrequencies = np.insert(normalizedFrequencies, 0, 0.0)
-        rawFilter = np.insert(rawFilter, 0, 0.0)
-    if normalizedFrequencies[-1] < 1:
-        normalizedFrequencies = np.append(normalizedFrequencies, 1.0)
-        rawFilter = np.append(rawFilter, 0.0)
+    fL = float(L_FREQ) / nyq
+    fH = float(H_FREQ) / nyq
+    normalizedFrequencies = np.concatenate(([0.0, fL], normalizedFrequencies, [fH, 1.0]))
+    rawFilter = np.concatenate(([0.0, 0.0],  rawFilter,  [0.0, 0.0]))
     finalFilter = firwin2(n_taps, normalizedFrequencies, rawFilter)
     return finalFilter
 
@@ -98,11 +98,9 @@ def getAllEpochFormatedData(subj, test_run):
             X.extend(epochs[1])
             y.extend([1] * len(epochs[1]))
         except Exception as e:
-            print(e)
+            raise Exception("Failed to extract epoch") from e
     if not X:
-        raise Exception(
-            f"No data to return in getAllEpochFormatedData for subj: {subj} test_run: {test_run}"
-        )
+        raise Exception(f"No data to return in getAllEpochFormatedData for subj: {subj} test_run: {test_run}")
     return (X, y)
 
 

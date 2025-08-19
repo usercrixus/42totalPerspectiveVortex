@@ -5,7 +5,7 @@ from mne.io.base import BaseRaw
 from .params import H_FREQ, L_FREQ, MODEL_DIR, MOTOR_LABELS
 
 def getEdfFilePath(subj, run):
-    path = f"DATA/files/S{subj:03d}/S{subj:03d}R{run:02d}.edf"
+    path = f"physionet.org/files/eegmmidb/1.0.0/S{subj:03d}/S{subj:03d}R{run:02d}.edf"
     if not os.path.exists(path):
         raise FileNotFoundError(f"Missing: {path}")
     return path

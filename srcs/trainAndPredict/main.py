@@ -1,11 +1,12 @@
 import os
 import sys
+import time
 import numpy as np
 import mne
 import warnings
 from sklearn.model_selection import cross_val_score
 from .edf import getAllEpochFormatedData, getSingleEpochFormatedData
-from .params import MODEL_DIR, RUNS_LEFT_RIGHT, MODEL_DIR, N_COMPONENTS
+from .params import BASE_SAMPLES_PER_SECONDE, MODEL_DIR, RUNS_LEFT_RIGHT, MODEL_DIR, N_COMPONENTS
 from .MyCSP import MyCSP
 from .utils import loadModel
 import joblib
@@ -36,17 +37,40 @@ def cli_train(subj, run, verbose = True):
     except Exception as e:
         print(e)
 
-def cli_predict(subj, run, verbose = True):
+def simulate_stream(Xs):
+    Xs = np.asarray(Xs) # garanty np
+    Xf = []
+    for frame in Xs.T: # Original shape: (n_channels, n_times), After transpose: (n_times, n_channels)
+        Xf.append(frame)
+        time.sleep(1 / BASE_SAMPLES_PER_SECONDE) # simulate stream
+    return Xf
+
+def cli_predict(subj, run):
+    try:
+        pipe = loadModel(subj, run)
+        X, y = getSingleEpochFormatedData(subj, run)
+        correct_list = []
+        print("epoch nb: [prediction] [truth] equal?")
+        for i, (Xs, ys) in enumerate(zip(X, y)):
+            frames = simulate_stream(Xs)
+            X_epoch = np.stack(frames, axis=1) # axis = 1 mean rotation
+            y_pred = pipe.predict([X_epoch])[0]
+            correct = (y_pred == ys)
+            correct_list.append(bool(correct))
+            print(f"epoch {i:02d}: [{y_pred}] [{ys}] {correct}")
+        acc = float(np.mean(correct_list)) if correct_list else 0.0
+        print(f"Accuracy: {acc:.4f}")
+        return acc
+    except Exception as e:
+        print(e)
+        return None
+
+def cli_all_helper(subj, run):
     try:
         pipe = loadModel(subj, run)
         X, y = getSingleEpochFormatedData(subj, run)
         y_pred = pipe.predict(X)
         correct = np.array(y_pred) == np.array(y)
-        if (verbose):
-            print("epoch nb: [prediction] [truth] equal?")
-            for i, (p, t) in enumerate(zip(y_pred, y)):
-                print(f"epoch {i:02d}: [{p+1}] [{t+1}] {p == t}")
-            print(f"Accuracy: {correct.mean():.4f}")
         return correct.mean()
     except Exception as e:
         print(e)
@@ -56,9 +80,9 @@ def cli_all(runs = RUNS_LEFT_RIGHT):
     accuracyGlobal = []
     for run in runs:
         accuracyPerSubject = []
-        for subj in range(1, 10):
+        for subj in range(1, 109):
             cli_train(subj, run, False)
-            acc = cli_predict(subj, run, False)
+            acc = cli_all_helper(subj, run)
             if acc is not None:
                 accuracyPerSubject.append(acc)
                 print(f"experiment {run}: subject {subj}: accuracy = {acc}")
